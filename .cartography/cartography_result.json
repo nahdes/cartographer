@@ -1,0 +1,489 @@
+{
+  "repo_path": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx",
+  "repo_name": "cartographer_8faztmtx",
+  "analysis_timestamp": "2026-03-11T18:11:52.760918+00:00",
+  "module_nodes": {
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\dbt_project.yml": {
+      "path": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\dbt_project.yml",
+      "language": "yaml",
+      "purpose_statement": "Module responsible for general purpose in the data pipeline. Exports: name, config-version, version, profile, model-paths. Complexity: 0 branches.",
+      "domain_cluster": "other",
+      "complexity_score": 0.0,
+      "change_velocity_30d": 0,
+      "loc": 26,
+      "comment_ratio": 0.0,
+      "pagerank_score": 0.0,
+      "is_dead_code_candidate": true,
+      "doc_drift_flag": false,
+      "last_modified": "",
+      "imports": [],
+      "exports": [
+        "name",
+        "config-version",
+        "version",
+        "profile",
+        "model-paths",
+        "seed-paths",
+        "test-paths",
+        "analysis-paths",
+        "macro-paths",
+        "target-path"
+      ],
+      "docstring": "",
+      "js_ts_exports": [],
+      "js_ts_imports": [],
+      "node_type": "module"
+    },
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\customers.sql": {
+      "path": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\customers.sql",
+      "language": "sql",
+      "purpose_statement": "Module responsible for general purpose in the data pipeline. Exports: customers. Complexity: 0 branches.",
+      "domain_cluster": "other",
+      "complexity_score": 0.0,
+      "change_velocity_30d": 0,
+      "loc": 69,
+      "comment_ratio": 0.0,
+      "pagerank_score": 0.0,
+      "is_dead_code_candidate": true,
+      "doc_drift_flag": false,
+      "last_modified": "",
+      "imports": [
+        "customer_orders",
+        "customer_payments",
+        "final",
+        "orders",
+        "payments"
+      ],
+      "exports": [
+        "customers"
+      ],
+      "docstring": "",
+      "js_ts_exports": [],
+      "js_ts_imports": [],
+      "node_type": "module"
+    },
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\orders.sql": {
+      "path": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\orders.sql",
+      "language": "sql",
+      "purpose_statement": "Module responsible for general purpose in the data pipeline. Exports: orders. Complexity: 0 branches.",
+      "domain_cluster": "other",
+      "complexity_score": 0.0,
+      "change_velocity_30d": 0,
+      "loc": 56,
+      "comment_ratio": 0.0,
+      "pagerank_score": 0.0,
+      "is_dead_code_candidate": false,
+      "doc_drift_flag": false,
+      "last_modified": "",
+      "imports": [
+        "final",
+        "order_payments",
+        "payments"
+      ],
+      "exports": [
+        "orders"
+      ],
+      "docstring": "",
+      "js_ts_exports": [],
+      "js_ts_imports": [],
+      "node_type": "module"
+    },
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\schema.yml": {
+      "path": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\schema.yml",
+      "language": "yaml",
+      "purpose_statement": "Module responsible for general purpose in the data pipeline. Exports: customers, orders. Complexity: 0 branches.",
+      "domain_cluster": "other",
+      "complexity_score": 0.0,
+      "change_velocity_30d": 0,
+      "loc": 82,
+      "comment_ratio": 0.0,
+      "pagerank_score": 0.0,
+      "is_dead_code_candidate": true,
+      "doc_drift_flag": false,
+      "last_modified": "",
+      "imports": [],
+      "exports": [
+        "customers",
+        "orders"
+      ],
+      "docstring": "",
+      "js_ts_exports": [],
+      "js_ts_imports": [],
+      "node_type": "module"
+    },
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\schema.yml": {
+      "path": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\schema.yml",
+      "language": "yaml",
+      "purpose_statement": "Module responsible for general purpose in the data pipeline. Exports: stg_customers, stg_orders, stg_payments. Complexity: 0 branches.",
+      "domain_cluster": "other",
+      "complexity_score": 0.0,
+      "change_velocity_30d": 0,
+      "loc": 31,
+      "comment_ratio": 0.0,
+      "pagerank_score": 0.0,
+      "is_dead_code_candidate": true,
+      "doc_drift_flag": false,
+      "last_modified": "",
+      "imports": [],
+      "exports": [
+        "stg_customers",
+        "stg_orders",
+        "stg_payments"
+      ],
+      "docstring": "",
+      "js_ts_exports": [],
+      "js_ts_imports": [],
+      "node_type": "module"
+    },
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_customers.sql": {
+      "path": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_customers.sql",
+      "language": "sql",
+      "purpose_statement": "Module responsible for general purpose in the data pipeline. Exports: source. Complexity: 0 branches.",
+      "domain_cluster": "other",
+      "complexity_score": 0.0,
+      "change_velocity_30d": 0,
+      "loc": 22,
+      "comment_ratio": 0.0,
+      "pagerank_score": 0.0,
+      "is_dead_code_candidate": true,
+      "doc_drift_flag": false,
+      "last_modified": "",
+      "imports": [
+        "renamed",
+        "the"
+      ],
+      "exports": [
+        "source"
+      ],
+      "docstring": "",
+      "js_ts_exports": [],
+      "js_ts_imports": [],
+      "node_type": "module"
+    },
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_orders.sql": {
+      "path": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_orders.sql",
+      "language": "sql",
+      "purpose_statement": "Module responsible for general purpose in the data pipeline. Exports: source. Complexity: 0 branches.",
+      "domain_cluster": "other",
+      "complexity_score": 0.0,
+      "change_velocity_30d": 0,
+      "loc": 23,
+      "comment_ratio": 0.0,
+      "pagerank_score": 0.0,
+      "is_dead_code_candidate": true,
+      "doc_drift_flag": false,
+      "last_modified": "",
+      "imports": [
+        "renamed",
+        "the"
+      ],
+      "exports": [
+        "source"
+      ],
+      "docstring": "",
+      "js_ts_exports": [],
+      "js_ts_imports": [],
+      "node_type": "module"
+    },
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_payments.sql": {
+      "path": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_payments.sql",
+      "language": "sql",
+      "purpose_statement": "Module responsible for general purpose in the data pipeline. Exports: source. Complexity: 0 branches.",
+      "domain_cluster": "other",
+      "complexity_score": 0.0,
+      "change_velocity_30d": 0,
+      "loc": 25,
+      "comment_ratio": 0.0,
+      "pagerank_score": 0.0,
+      "is_dead_code_candidate": true,
+      "doc_drift_flag": false,
+      "last_modified": "",
+      "imports": [
+        "renamed",
+        "the"
+      ],
+      "exports": [
+        "source"
+      ],
+      "docstring": "",
+      "js_ts_exports": [],
+      "js_ts_imports": [],
+      "node_type": "module"
+    }
+  },
+  "dataset_nodes": {
+    "customer_orders": {
+      "name": "customer_orders",
+      "storage_type": "unknown",
+      "schema_snapshot": {},
+      "column_lineage": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_range": [],
+      "node_type": "dataset"
+    },
+    "customer_payments": {
+      "name": "customer_payments",
+      "storage_type": "unknown",
+      "schema_snapshot": {},
+      "column_lineage": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_range": [],
+      "node_type": "dataset"
+    },
+    "final": {
+      "name": "final",
+      "storage_type": "unknown",
+      "schema_snapshot": {},
+      "column_lineage": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_range": [],
+      "node_type": "dataset"
+    },
+    "orders": {
+      "name": "orders",
+      "storage_type": "unknown",
+      "schema_snapshot": {},
+      "column_lineage": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_range": [],
+      "node_type": "dataset"
+    },
+    "payments": {
+      "name": "payments",
+      "storage_type": "unknown",
+      "schema_snapshot": {},
+      "column_lineage": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_range": [],
+      "node_type": "dataset"
+    },
+    "order_payments": {
+      "name": "order_payments",
+      "storage_type": "unknown",
+      "schema_snapshot": {},
+      "column_lineage": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_range": [],
+      "node_type": "dataset"
+    },
+    "renamed": {
+      "name": "renamed",
+      "storage_type": "unknown",
+      "schema_snapshot": {},
+      "column_lineage": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_range": [],
+      "node_type": "dataset"
+    },
+    "the": {
+      "name": "the",
+      "storage_type": "unknown",
+      "schema_snapshot": {},
+      "column_lineage": {},
+      "freshness_sla": "",
+      "owner": "",
+      "is_source_of_truth": false,
+      "source_file": "",
+      "line_range": [],
+      "node_type": "dataset"
+    }
+  },
+  "function_nodes": {},
+  "transformation_nodes": {
+    "sql_customers": {
+      "name": "sql_customers",
+      "source_datasets": [
+        "customer_orders",
+        "customer_payments",
+        "final",
+        "orders",
+        "payments"
+      ],
+      "target_datasets": [],
+      "transformation_type": "sql_select",
+      "source_file": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\customers.sql",
+      "line_range": [],
+      "sql_query_if_applicable": "with customers as (\n\n    select * from {{ ref('stg_customers') }}\n\n),\n\norders as (\n\n    select * from {{ ref('stg_orders') }}\n\n),\n\npayments as (\n\n    select * from {{ ref('stg_payments') }}\n\n),\n\ncustomer_orders as (\n\n        select\n        customer_id,\n\n        min(order_date) as first_order,\n        max(order_date) as most_recent_order,\n        count(order_id) as number_of_orders\n    from orders\n\n    group by customer_id\n\n),\n\ncustomer_payments as (\n\n    select\n        orders.customer_id,\n      ",
+      "column_mappings": {
+        "customer_id": [
+          "customer_id"
+        ],
+        "first_order": [
+          "first_order"
+        ],
+        "most_recent_order": [
+          "most_recent_order"
+        ],
+        "number_of_orders": [
+          "number_of_orders"
+        ],
+        "total_amount": [
+          "amount"
+        ],
+        "first_name": [
+          "first_name"
+        ],
+        "last_name": [
+          "last_name"
+        ],
+        "customer_lifetime_value": [
+          "total_amount"
+        ]
+      },
+      "node_type": "transformation"
+    },
+    "sql_orders": {
+      "name": "sql_orders",
+      "source_datasets": [
+        "final",
+        "order_payments",
+        "payments"
+      ],
+      "target_datasets": [],
+      "transformation_type": "sql_select",
+      "source_file": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\orders.sql",
+      "line_range": [],
+      "sql_query_if_applicable": "{% set payment_methods = ['credit_card', 'coupon', 'bank_transfer', 'gift_card'] %}\n\nwith orders as (\n\n    select * from {{ ref('stg_orders') }}\n\n),\n\npayments as (\n\n    select * from {{ ref('stg_payments') }}\n\n),\n\norder_payments as (\n\n    select\n        order_id,\n\n        {% for payment_method in payment_methods -%}\n        sum(case when payment_method = '{{ payment_method }}' then amount else 0 end) as {{ payment_method }}_amount,\n        {% endfor -%}\n\n        sum(amount) as total_amount\n\n    ",
+      "column_mappings": {
+        "order_id": [
+          "order_id"
+        ],
+        "customer_id": [
+          "customer_id"
+        ],
+        "order_date": [
+          "order_date"
+        ],
+        "status": [
+          "status"
+        ]
+      },
+      "node_type": "transformation"
+    },
+    "sql_stg_customers": {
+      "name": "sql_stg_customers",
+      "source_datasets": [
+        "renamed",
+        "the"
+      ],
+      "target_datasets": [],
+      "transformation_type": "sql_select",
+      "source_file": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_customers.sql",
+      "line_range": [],
+      "sql_query_if_applicable": "with source as (\n\n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_customers') }}\n\n),\n\nrenamed as (\n\n    select\n        id as customer_id,\n        first_name,\n        last_name\n\n    from source\n\n)\n\nselect * from renamed\n",
+      "column_mappings": {
+        "customer_id": [
+          "id"
+        ],
+        "first_name": [
+          "first_name"
+        ],
+        "last_name": [
+          "last_name"
+        ]
+      },
+      "node_type": "transformation"
+    },
+    "sql_stg_orders": {
+      "name": "sql_stg_orders",
+      "source_datasets": [
+        "renamed",
+        "the"
+      ],
+      "target_datasets": [],
+      "transformation_type": "sql_select",
+      "source_file": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_orders.sql",
+      "line_range": [],
+      "sql_query_if_applicable": "with source as (\n\n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_orders') }}\n\n),\n\nrenamed as (\n\n    select\n        id as order_id,\n        user_id as customer_id,\n        order_date,\n        status\n\n    from source\n\n)\n\nselect * from renamed\n",
+      "column_mappings": {
+        "order_id": [
+          "id"
+        ],
+        "customer_id": [
+          "user_id"
+        ],
+        "order_date": [
+          "order_date"
+        ],
+        "status": [
+          "status"
+        ]
+      },
+      "node_type": "transformation"
+    },
+    "sql_stg_payments": {
+      "name": "sql_stg_payments",
+      "source_datasets": [
+        "renamed",
+        "the"
+      ],
+      "target_datasets": [],
+      "transformation_type": "sql_select",
+      "source_file": "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_payments.sql",
+      "line_range": [],
+      "sql_query_if_applicable": "with source as (\n    \n    {#-\n    Normally we would select from the table here, but we are using seeds to load\n    our data in this project\n    #}\n    select * from {{ ref('raw_payments') }}\n\n),\n\nrenamed as (\n\n    select\n        id as payment_id,\n        order_id,\n        payment_method,\n\n        -- `amount` is currently stored in cents, so we convert it to dollars\n        amount / 100 as amount\n\n    from source\n\n)\n\nselect * from renamed\n",
+      "column_mappings": {
+        "payment_id": [
+          "id"
+        ],
+        "order_id": [
+          "order_id"
+        ],
+        "payment_method": [
+          "payment_method"
+        ],
+        "amount": [
+          "amount"
+        ]
+      },
+      "node_type": "transformation"
+    }
+  },
+  "edges": [],
+  "domain_clusters": {
+    "other": [
+      "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_payments.sql"
+    ]
+  },
+  "day_one_answers": {
+    "q1_primary_ingestion": "Entry points (in-degree=0 datasets): customer_orders, customer_payments, final, orders, payments",
+    "q2_critical_outputs": "Output sinks (out-degree=0 datasets): Not detected",
+    "q3_blast_radius": "Highest-impact modules by PageRank: orders.sql, dbt_project.yml, customers.sql. Run blast_radius() for full impact.",
+    "q4_business_logic": "Logic concentrated in: orders.sql, dbt_project.yml, customers.sql. Circular deps: None.",
+    "q5_change_velocity": "Highest-velocity files (30d): No git history. Active pain points."
+  },
+  "high_velocity_files": [],
+  "circular_dependencies": [],
+  "pagerank_scores": {
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\dbt_project.yml": 0.11299436755514893,
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\customers.sql": 0.11299436755514893,
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\orders.sql": 0.20903942711395773,
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\schema.yml": 0.11299436755514893,
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\schema.yml": 0.11299436755514893,
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_customers.sql": 0.11299436755514893,
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_orders.sql": 0.11299436755514893,
+    "C:\\Users\\reus\\AppData\\Local\\Temp\\cartographer_8faztmtx\\models\\staging\\stg_payments.sql": 0.11299436755514893
+  },
+  "errors": []
+}
