@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[project]
+name = "brownfield-cartographer"
+version = "0.3.0"
+description = "Multi-agent codebase intelligence system for data engineering repos"
+requires-python = ">=3.9"
+dependencies = [
+    "networkx>=3.0",
+]
+
+[project.optional-dependencies]
+# Recommended: full analysis capability
+full = [
+    "networkx>=3.0",
+    "scikit-learn>=1.3",
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+    "sqlglot>=18.0",
+    "anthropic>=0.25",
+    "pydantic>=2.0",
+]
+# LLM-powered analysis (Semanticist + Navigator LLM routing)
+llm = ["anthropic>=0.25"]
+# Semantic search + domain clustering
+ml = ["scikit-learn>=1.3", "numpy>=1.24"]
+# Pydantic v2 validation layer
+pydantic = ["pydantic>=2.0"]
+# SQL dialect-aware lineage
+sql = ["sqlglot>=18.0"]
+# YAML DAG / dbt schema parsing
+yaml = ["pyyaml>=6.0"]
+# Development + testing
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "ruff>=0.1",
+    "mypy>=1.5",
+    "pydantic>=2.0",
+]
+
+[project.scripts]
+cartograph = "src.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*", "**/__init__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+fail_under = 70
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+exclude = [".git", "__pycache__", "build", "dist"]
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
+warn_return_any = false
