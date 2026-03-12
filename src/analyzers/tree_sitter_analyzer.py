@@ -1,13 +1,28 @@
 """
-Multi-language AST analyzer — v2.
-  Python   -> stdlib ast  (full structural analysis, type annotations, call graph)
-  JS / TS  -> scope-aware regex-AST (imports, exports, interfaces, types, generics,
-               decorators, async/await, React hooks/components, call graph)
-  SQL      -> regex       (table refs; column-level in sql_lineage.py)
-  YAML     -> PyYAML structural parsing
-  Notebook -> JSON -> Python cell extraction -> ast
+Multi-language Static AST Analyzer — v0.3.0
 
-Graceful degradation: errors are logged and skipped, never raised.
+Backend per language (no tree-sitter runtime required):
+  Python     -> stdlib ``ast``  (true AST: imports, exports, function signatures,
+                type annotations, cyclomatic complexity, call graph)
+  JS / TS    -> scope-aware regex-AST  (imports, exports, interfaces, type aliases,
+                enums, generics, decorators, React hooks/components, dynamic imports,
+                re-exports, call graph)
+  SQL        -> regex  (table refs, CTE exclusion; column-level in sql_lineage.py)
+  YAML       -> PyYAML structural parsing  (dbt schema, Airflow DAG config)
+  Notebook   -> JSON cell extraction -> Python ``ast`` backend
+
+Design note
+-----------
+The class is named ``MultiLangAnalyzer`` (alias ``TreeSitterAnalyzer`` kept for
+backwards compatibility).  The interface is intentionally tree-sitter-compatible
+so real grammars can be swapped in per language without touching callers:
+
+    class MyGoAnalyzer:
+        def analyze(self, path, source) -> Tuple[ModuleNode, List[FunctionNode]]: ...
+
+    analyzer.register('.go', MyGoAnalyzer())
+
+Graceful degradation: parse errors are logged and skipped, never raised.
 """
 from __future__ import annotations
 import ast
@@ -379,11 +394,22 @@ class NotebookAnalyzer:
 
 # ── Router ──────────────────────────────────────────────────────────────────────
 
-class TreeSitterAnalyzer:
+class MultiLangAnalyzer:
     """
-    Multi-language dispatcher.
-    Named TreeSitterAnalyzer to reflect the upgrade path — the interface
-    is tree-sitter-compatible so backends can be swapped transparently.
+    Multi-language static analysis dispatcher.
+
+    Uses stdlib ``ast`` for Python (true AST), scope-aware regex for JS/TS,
+    and structural parsing for SQL/YAML/Notebooks.
+
+    The interface is tree-sitter-compatible: backends can be swapped per
+    extension without modifying callers.  To add a new language::
+
+        analyzer = MultiLangAnalyzer()
+        analyzer.register('.go', MyGoAnalyzer())
+
+    All per-language backends must implement::
+
+        def analyze(self, path: str, source: str) -> Tuple[ModuleNode, List[FunctionNode]]
     """
 
     def __init__(self):
@@ -393,6 +419,23 @@ class TreeSitterAnalyzer:
         self.yaml = YAMLAnalyzer()
         self.nb   = NotebookAnalyzer()
         self.errors: List[str] = []
+        # Custom backends registered at runtime via register()
+        self._custom: Dict[str, object] = {}
+
+    def register(self, extension: str, backend) -> None:
+        """Register a custom analyzer backend for a file extension.
+
+        The backend must implement::
+
+            def analyze(self, path: str, source: str) -> Tuple[ModuleNode, List[FunctionNode]]
+
+        Example — add Go support::
+
+            analyzer.register('.go', MyGoAnalyzer())
+        """
+        ext = extension if extension.startswith('.') else f'.{extension}'
+        self._custom[ext.lower()] = backend
+        LANGUAGE_MAP[ext.lower()] = ext.lower().lstrip('.')
 
     def analyze_file(self, path: str) -> Tuple[Optional[ModuleNode], List[FunctionNode]]:
         if LanguageRouter.should_skip(path):
@@ -408,6 +451,13 @@ class TreeSitterAnalyzer:
         if not source.strip():
             return None, []
         try:
+            ext = Path(path).suffix.lower()
+            # Custom registered backends take priority
+            if ext in self._custom:
+                result = self._custom[ext].analyze(path, source)
+                if isinstance(result, tuple):
+                    return result
+                return result, []
             if lang == Language.PYTHON.value:
                 return self.py.analyze(path, source)
             elif lang in (Language.JAVASCRIPT.value, Language.TYPESCRIPT.value):
@@ -443,3 +493,7 @@ class TreeSitterAnalyzer:
                     functions.extend(fns)
                     count += 1
         return modules, functions
+
+
+# Backwards-compatibility alias — callers using TreeSitterAnalyzer continue to work
+TreeSitterAnalyzer = MultiLangAnalyzer
