@@ -119,6 +119,43 @@ def _propagate_column_lineage(kg: KnowledgeGraph,
             kg.datasets[tgt_name].column_lineage = existing
 
 
+
+def _infer_storage_type(dataset_name: str, source_file: str = "") -> str:
+    """Infer a human-readable storage type from path and naming conventions."""
+    name = dataset_name.lower()
+    src  = source_file.lower().replace("\\", "/")
+    # Raw / seed tables — check name first (independent of source file)
+    if name.startswith("raw_") or name.startswith("seed_"):
+        return "source table"
+    if "seeds/" in src:
+        return "seed (csv)"
+    # dbt model files
+    if "models/" in src:
+        if name.startswith("stg_"):
+            return "dbt staging"
+        if name.startswith("int_"):
+            return "dbt intermediate"
+        if name.startswith("fct_") or name.startswith("fact_"):
+            return "dbt fact"
+        if name.startswith("dim_"):
+            return "dbt dimension"
+        return "dbt model"
+    # Airflow / Spark
+    if "spark" in src or "pyspark" in src:
+        return "spark"
+    if "airflow" in src or "dag" in src:
+        return "airflow"
+    # Notebook
+    if ".ipynb" in src:
+        return "notebook"
+    # SQL but not dbt
+    if ".sql" in src:
+        return "sql view"
+    # Python ETL
+    if ".py" in src:
+        return "python etl"
+    return "unknown"
+
 class Hydrologist:
     """
     Constructs the data lineage DAG by analysing all file types.
@@ -169,6 +206,12 @@ class Hydrologist:
 
                     for t in transforms:
                         self.kg.add_transformation(t)
+                        # ── Infer storage_label on source + target datasets
+                        for ds_name in list(t.source_datasets) + list(t.target_datasets):
+                            if ds_name in self.kg.datasets:
+                                ds_node = self.kg.datasets[ds_name]
+                                if not getattr(ds_node, "storage_label", ""):
+                                    ds_node.storage_label = _infer_storage_type(ds_name, t.source_file or "")
                         # ── Propagate column lineage into target DatasetNodes
                         if t.column_mappings:
                             _propagate_column_lineage(self.kg, t)
@@ -223,7 +266,8 @@ class Hydrologist:
 
     def _analyze_sql(self, path: str) -> List[TransformationNode]:
         repo_indicators = ['models/', 'analyses/', 'snapshots/']
-        if any(indicator in path for indicator in repo_indicators):
+        normalised = path.replace('\\', '/').replace('\\\\', '/')
+        if any(indicator in normalised for indicator in repo_indicators):
             return self.sql_lineage.analyze_dbt_model(path)
         # For plain SQL files, also extract column-level lineage
         try:
