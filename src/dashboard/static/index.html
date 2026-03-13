@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brownfield Cartographer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:    #0f1117;
+    --bg2:   #161b27;
+    --bg3:   #1e2535;
+    --bdr:   #2a3347;
+    --bdr2:  #3a4a63;
+    --text:  #e2e8f4;
+    --muted: #7a8ba8;
+    --dim:   #4a5a73;
+    --blue:  #4e8ef7;
+    --teal:  #1fb89a;
+    --amber: #f0a827;
+    --red:   #f05252;
+    --green: #34c97a;
+    --purple:#8b6ef7;
+    --r:     8px;
+    --r2:    12px;
+  }
+  html, body { height: 100%; font-family: system-ui, -apple-system, sans-serif; font-size: 13px; background: var(--bg); color: var(--text); overflow: hidden; }
+  #app { display: grid; grid-template-columns: 220px 1fr 230px; grid-template-rows: 52px 1fr 160px 200px; height: 100vh; gap: 8px; padding: 8px; }
+
+  /* Header */
+  #header { grid-column: 1/4; display: flex; align-items: center; gap: 16px; background: var(--bg2); border: 0.5px solid var(--bdr); border-radius: var(--r); padding: 0 16px; }
+  #header h1 { font-size: 14px; font-weight: 600; color: var(--text); }
+  #header .sep { color: var(--dim); }
+  #repo-name { font-size: 13px; color: var(--blue); font-weight: 500; }
+  .stat-chip { background: var(--bg3); border: 0.5px solid var(--bdr); border-radius: 20px; padding: 3px 10px; font-size: 11px; color: var(--muted); }
+  .stat-chip span { color: var(--text); font-weight: 600; }
+  #header .spacer { flex: 1; }
+  #ts { font-size: 11px; color: var(--dim); }
+
+  /* Panels */
+  .panel { background: var(--bg2); border: 0.5px solid var(--bdr); border-radius: var(--r2); overflow: hidden; }
+  .panel-hdr { font-size: 10px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: 0.08em; padding: 10px 12px 6px; border-bottom: 0.5px solid var(--bdr); display: flex; align-items: center; justify-content: space-between; }
+  .panel-hdr .hdr-right { font-size: 10px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--dim); }
+
+  /* File nav */
+  #file-nav { grid-row: 2; overflow: hidden; display: flex; flex-direction: column; }
+  #file-list { flex: 1; overflow-y: auto; padding: 6px 0; }
+  .file-item { display: flex; align-items: center; gap: 6px; padding: 5px 12px; cursor: pointer; border-left: 2px solid transparent; transition: all 0.12s; }
+  .file-item:hover { background: var(--bg3); }
+  .file-item.active { border-left-color: var(--blue); background: rgba(78,142,247,0.08); }
+  .file-item .fname { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); font-size: 12px; }
+  .file-item .badge { flex-shrink: 0; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; }
+  .badge-py  { background: rgba(78,142,247,0.2); color: var(--blue); }
+  .badge-sql { background: rgba(240,168,39,0.2); color: var(--amber); }
+  .badge-yml { background: rgba(31,184,154,0.2); color: var(--teal); }
+  .badge-js  { background: rgba(240,168,39,0.15); color: var(--amber); }
+  .badge-ts  { background: rgba(139,110,247,0.2); color: var(--purple); }
+  .badge-ipynb { background: rgba(240,82,82,0.15); color: var(--red); }
+  .blast-bar-mini { width: 28px; height: 4px; background: var(--bg3); border-radius: 2px; flex-shrink: 0; }
+  .blast-bar-mini .fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+  .fill-low { background: var(--green); }
+  .fill-med { background: var(--amber); }
+  .fill-high { background: var(--red); }
+
+  /* Graph center */
+  #graph-panel { grid-column: 2; grid-row: 2; display: flex; flex-direction: column; min-height: 0; }
+  #graph-legend { display: flex; gap: 12px; align-items: center; padding: 8px 12px; border-bottom: 0.5px solid var(--bdr); flex-shrink: 0; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+  #kg-svg { flex: 1; min-height: 0; width: 100%; cursor: grab; display: block; }
+  #kg-svg:active { cursor: grabbing; }
+  #graph-tooltip { position: fixed; background: var(--bg2); border: 0.5px solid var(--bdr2); border-radius: var(--r); padding: 8px 12px; font-size: 11px; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 100; max-width: 220px; line-height: 1.6; }
+
+  /* Risk panel */
+  #risk-panel { grid-row: 2; display: flex; flex-direction: column; gap: 0; overflow: hidden; }
+  #risk-content { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .metric-card { background: var(--bg3); border-radius: var(--r); padding: 8px 10px; }
+  .metric-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+  .metric-val { font-size: 20px; font-weight: 700; }
+  .val-red { color: var(--red); }
+  .val-amber { color: var(--amber); }
+  .val-green { color: var(--green); }
+  .val-blue { color: var(--blue); }
+  .risk-bar-wrap { margin-top: 2px; }
+  .risk-bar-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+  .risk-bar { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+  .risk-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+  .alert-list { display: flex; flex-direction: column; gap: 5px; }
+  .alert-item { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; padding: 6px 8px; border-radius: var(--r); line-height: 1.4; }
+  .alert-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
+  .alert-red { background: rgba(240,82,82,0.12); color: #f08282; }
+  .alert-red .alert-dot { background: var(--red); }
+  .alert-amber { background: rgba(240,168,39,0.1); color: #f0c070; }
+  .alert-amber .alert-dot { background: var(--amber); }
+  .alert-green { background: rgba(52,201,122,0.1); color: #70d4a0; }
+  .alert-green .alert-dot { background: var(--green); }
+  .detail-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .detail-desc { font-size: 11px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+  #ask-btn { width: 100%; padding: 7px; background: transparent; border: 0.5px solid var(--bdr2); border-radius: var(--r); color: var(--muted); font-size: 11px; cursor: pointer; transition: all 0.15s; }
+  #ask-btn:hover { background: var(--bg3); color: var(--text); }
+
+  /* Lineage */
+  #lineage-panel { grid-column: 1/4; grid-row: 3; display: flex; flex-direction: column; }
+  #lineage-flow { flex: 1; display: flex; align-items: center; gap: 0; padding: 0 12px; overflow-x: auto; }
+  .ln-node { background: var(--bg3); border: 0.5px solid var(--bdr2); border-radius: var(--r); padding: 6px 14px; min-width: 110px; text-align: center; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+  .ln-node:hover, .ln-node.active { border-color: var(--blue); background: rgba(78,142,247,0.1); }
+  .ln-node-title { font-size: 11px; font-weight: 600; color: var(--text); }
+  .ln-node-sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .ln-arrow { flex-shrink: 0; padding: 0 8px; color: var(--dim); font-size: 14px; }
+  #ln-detail { padding: 5px 12px; font-size: 11px; color: var(--muted); background: var(--bg3); border-top: 0.5px solid var(--bdr); min-height: 24px; }
+
+  /* Chat */
+  #chat-panel { grid-column: 1/4; grid-row: 4; display: flex; flex-direction: column; }
+  #chat-msgs { flex: 1; overflow-y: auto; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .msg { font-size: 12px; line-height: 1.5; padding: 7px 10px; border-radius: var(--r); max-width: 80%; white-space: pre-wrap; }
+  .msg-user { background: rgba(78,142,247,0.15); color: var(--blue); align-self: flex-end; border: 0.5px solid rgba(78,142,247,0.3); }
+  .msg-bot { background: var(--bg3); color: var(--text); align-self: flex-start; border: 0.5px solid var(--bdr); }
+  .msg-thinking { color: var(--dim); font-style: italic; }
+  #chat-bottom { display: flex; flex-direction: column; gap: 6px; padding: 6px 12px 8px; border-top: 0.5px solid var(--bdr); flex-shrink: 0; }
+  .chip-row { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip { font-size: 10px; padding: 3px 9px; border: 0.5px solid var(--bdr2); border-radius: 20px; cursor: pointer; color: var(--muted); transition: all 0.12s; }
+  .chip:hover { background: var(--bg3); color: var(--text); border-color: var(--blue); }
+  .chat-row { display: flex; gap: 6px; }
+  #chat-in { flex: 1; background: var(--bg3); border: 0.5px solid var(--bdr2); border-radius: var(--r); padding: 7px 10px; color: var(--text); font-size: 12px; outline: none; }
+  #chat-in:focus { border-color: var(--blue); }
+  #send-btn { padding: 7px 14px; background: transparent; border: 0.5px solid var(--blue); border-radius: var(--r); color: var(--blue); font-size: 11px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  #send-btn:hover { background: rgba(78,142,247,0.15); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bdr2); border-radius: 2px; }
+
+  /* Node styles for D3 */
+  .node-module  { fill: #1a3a6a; stroke: #4e8ef7; stroke-width: 1.5; }
+  .node-dataset { fill: #0f3328; stroke: #1fb89a; stroke-width: 1.5; }
+  .node-transform { fill: #3d2a08; stroke: #f0a827; stroke-width: 1.5; }
+  .node-selected { stroke-width: 2.5; filter: brightness(1.4); }
+  .link-imports  { stroke: rgba(78,142,247,0.35); stroke-width: 1; }
+  .link-consumes { stroke: rgba(31,184,154,0.4); stroke-width: 1; stroke-dasharray: 4 3; }
+  .link-produces { stroke: rgba(240,168,39,0.4); stroke-width: 1; stroke-dasharray: 4 3; }
+  .node-label { fill: var(--text); font-size: 10px; pointer-events: none; font-family: system-ui, sans-serif; }
+
+  .loading { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--dim); font-size: 12px; gap: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--bdr); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.8s linear infinite; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <div id="header">
+    <h1>🗺️ Brownfield Cartographer</h1>
+    <span class="sep">/</span>
+    <span id="repo-name">loading…</span>
+    <div class="stat-chip">modules <span id="h-mods">—</span></div>
+    <div class="stat-chip">datasets <span id="h-ds">—</span></div>
+    <div class="stat-chip">transforms <span id="h-tx">—</span></div>
+    <div class="stat-chip">PageRank top <span id="h-top">—</span></div>
+    <div class="spacer"></div>
+    <span id="ts"></span>
+  </div>
+
+  <!-- File nav -->
+  <div class="panel" id="file-nav">
+    <div class="panel-hdr">File navigation <span class="hdr-right" id="mod-count">—</span></div>
+    <div id="file-list"><div class="loading"><div class="spinner"></div> loading</div></div>
+  </div>
+
+  <!-- Graph -->
+  <div class="panel" id="graph-panel">
+    <div class="panel-hdr">
+      Codebase knowledge graph
+      <div id="graph-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#4e8ef7"></div>module</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1fb89a"></div>dataset</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f0a827"></div>transform</div>
+        <span class="hdr-right">drag to pan · scroll to zoom · click to inspect</span>
+      </div>
+    </div>
+    <svg id="kg-svg"><text x="50%" y="50%" text-anchor="middle" fill="#4a5a73" font-size="12" dy=".3em">loading graph…</text></svg>
+  </div>
+  <div id="graph-tooltip"></div>
+
+  <!-- Risk panel -->
+  <div class="panel" id="risk-panel">
+    <div class="panel-hdr">Risk profile</div>
+    <div id="risk-content">
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-label">Blast radius</div>
+          <div class="metric-val val-amber" id="m-blast">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">PageRank</div>
+          <div class="metric-val val-blue" id="m-pr">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">LOC</div>
+          <div class="metric-val val-blue" id="m-loc">—</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Complexity</div>
+          <div class="metric-val val-amber" id="m-cx">—</div>
+        </div>
+      </div>
+      <div class="risk-bar-wrap">
+        <div class="risk-bar-label"><span>Blast radius</span><span id="blast-pct">—</span></div>
+        <div class="risk-bar"><div class="risk-bar-fill" id="blast-fill" style="width:0%"></div></div>
+      </div>
+      <div class="alert-list" id="alert-list">
+        <div class="alert-item alert-amber"><div class="alert-dot"></div>Click a node to inspect</div>
+      </div>
+      <div class="detail-name" id="detail-name">—</div>
+      <div class="detail-desc" id="detail-desc">Select a node in the graph or file list</div>
+      <div id="detail-cost" style="font-size:11px;color:var(--muted);margin-bottom:4px"></div>
+      <button id="ask-btn" onclick="askAboutSelected()">Ask Navigator about this module ↗</button>
+    </div>
+  </div>
+
+  <!-- Lineage -->
+  <div class="panel" id="lineage-panel">
+    <div class="panel-hdr">Data lineage <span class="hdr-right">click a stage to inspect column mappings</span></div>
+    <div id="lineage-flow"><div class="loading"><div class="spinner"></div> loading</div></div>
+    <div id="ln-detail"></div>
+  </div>
+
+  <!-- Chat -->
+  <div class="panel" id="chat-panel">
+    <div class="panel-hdr">Query the codebase — Navigator</div>
+    <div id="chat-msgs">
+      <div class="msg msg-bot">Navigator ready. Ask about any module, dataset, or data flow — or click a node to inspect it.</div>
+    </div>
+    <div id="chat-bottom">
+      <div class="chip-row" id="chips"></div>
+      <div class="chat-row">
+        <input id="chat-in" placeholder="e.g. blast radius of orders.sql, trace customers upstream, where is CLV calculated…" />
+        <button id="send-btn" onclick="sendChat()">Send ↗</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';  // same origin
+let selectedNode = null;
+let graphData = { nodes: [], edges: [] };
+let simulation = null;
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+async function init() {
+  const [summary, modules, graph] = await Promise.all([
+    fetch(`${API}/api/summary`).then(r => r.json()),
+    fetch(`${API}/api/modules`).then(r => r.json()),
+    fetch(`${API}/api/graph`).then(r => r.json()),
+  ]);
+
+  renderHeader(summary);
+  renderFileNav(modules);
+  renderLineage(modules, graph);
+  renderGraph(graph);
+  renderDefaultRisk(summary);
+  renderChips(modules);
+}
+
+// ── Header ────────────────────────────────────────────────────────────────────
+function renderHeader(s) {
+  document.getElementById('repo-name').textContent = s.repo_name;
+  document.getElementById('h-mods').textContent = s.module_count;
+  document.getElementById('h-ds').textContent   = s.dataset_count;
+  document.getElementById('h-tx').textContent   = s.transform_count;
+  document.getElementById('h-top').textContent  = s.top_module + ' (' + s.top_pagerank + ')';
+  document.getElementById('ts').textContent     = s.analysis_timestamp ? s.analysis_timestamp.slice(0,16).replace('T',' ') + ' UTC' : '';
+}
+
+// ── File nav ──────────────────────────────────────────────────────────────────
+function badgeClass(lang) {
+  const m = { python:'py', sql:'sql', yaml:'yml', javascript:'js', typescript:'ts', notebook:'ipynb' };
+  return 'badge-' + (m[lang] || 'py');
+}
+function blastClass(b) { return b > 5 ? 'fill-high' : b > 2 ? 'fill-med' : 'fill-low'; }
+
+function renderFileNav(modules) {
+  // Deduplicate by path (schema.yml may appear twice from different YAML parsers)
+  const seen = new Set();
+  modules = modules.filter(m => { if (seen.has(m.path)) return false; seen.add(m.path); return true; });
+  document.getElementById('mod-count').textContent = modules.length + ' files';
+  const list = document.getElementById('file-list');
+  list.innerHTML = '';
+  modules.forEach(m => {
+    const el = document.createElement('div');
+    el.className = 'file-item';
+    el.dataset.path = m.path;
+    const pct = Math.min(100, m.blast * 10);
+    el.innerHTML = `
+      <div class="fname">${m.name}</div>
+      <div class="badge ${badgeClass(m.language)}">${m.language.slice(0,3)}</div>
+      <div class="blast-bar-mini"><div class="fill ${blastClass(m.blast)}" style="width:${pct}%"></div></div>`;
+    el.onclick = () => selectByPath(m.path);
+    list.appendChild(el);
+  });
+}
+
+// ── D3 Graph ──────────────────────────────────────────────────────────────────
+function renderGraph(data) {
+  graphData = data;
+  const svg = d3.select('#kg-svg');
+  const rect = document.getElementById('kg-svg').getBoundingClientRect();
+  const W = rect.width, H = rect.height;
+  svg.selectAll('*').remove();
+  if (!W || !H) return;
+
+  const g = svg.append('g');
+  const zoom = d3.zoom().scaleExtent([0.3, 3])
+    .on('zoom', e => g.attr('transform', e.transform));
+  svg.call(zoom);
+
+  // Arrow markers
+  const defs = svg.append('defs');
+  [['arrow-imp', '#4e8ef7'], ['arrow-con', '#1fb89a'], ['arrow-pro', '#f0a827']].forEach(([id, col]) => {
+    defs.append('marker').attr('id', id).attr('viewBox','0 0 10 10')
+      .attr('refX', 10).attr('refY', 5).attr('markerWidth', 5).attr('markerHeight', 5)
+      .attr('orient', 'auto-start-reverse')
+      .append('path').attr('d','M2 1L9 5L2 9').attr('fill','none')
+      .attr('stroke', col).attr('stroke-width', 1.5)
+      .attr('stroke-linecap','round').attr('stroke-linejoin','round');
+  });
+
+  // Nodes index
+  const nodeById = new Map(data.nodes.map(n => [n.id, n]));
+
+  // Filter out isolated nodes if many modules
+  const linkedIds = new Set();
+  data.edges.forEach(e => { linkedIds.add(e.source); linkedIds.add(e.target); });
+  const visNodes = data.nodes.filter(n => linkedIds.has(n.id) || data.nodes.length <= 20);
+  const visEdges = data.edges.filter(e => {
+    const sn = typeof e.source === 'object' ? e.source.id : e.source;
+    const tn = typeof e.target === 'object' ? e.target.id : e.target;
+    return visNodes.find(n => n.id === sn) && visNodes.find(n => n.id === tn);
+  });
+
+  const nodeRadius = n => {
+    if (n.type === 'module') return Math.max(7, Math.min(18, 7 + (n.pagerank || 0) * 800));
+    if (n.type === 'dataset') return 8;
+    return 9;
+  };
+
+  simulation = d3.forceSimulation(visNodes)
+    .force('link', d3.forceLink(visEdges).id(d => d.id).distance(80).strength(0.5))
+    .force('charge', d3.forceManyBody().strength(-200))
+    .force('center', d3.forceCenter(W / 2, H / 2).strength(0.08))
+    .force('x', d3.forceX(W / 2).strength(0.04))
+    .force('y', d3.forceY(H / 2).strength(0.04))
+    .force('collide', d3.forceCollide(d => nodeRadius(d) + 16))
+    .alphaDecay(0.02);
+
+  const linkEl = g.append('g').selectAll('line').data(visEdges).join('line')
+    .attr('class', d => 'link-' + (d.type || 'imports'))
+    .attr('marker-end', d => {
+      if (d.type === 'consumes') return 'url(#arrow-con)';
+      if (d.type === 'produces') return 'url(#arrow-pro)';
+      return 'url(#arrow-imp)';
+    });
+
+  const nodeEl = g.append('g').selectAll('g').data(visNodes).join('g')
+    .attr('class', 'node-g')
+    .style('cursor', 'pointer')
+    .call(d3.drag()
+      .on('start', (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on('drag',  (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on('end',   (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
+    .on('click', (event, d) => { event.stopPropagation(); selectNode(d); })
+    .on('mouseover', (event, d) => showTooltip(event, d))
+    .on('mousemove', (event) => moveTooltip(event))
+    .on('mouseout',  () => hideTooltip());
+
+  nodeEl.append('circle')
+    .attr('r', nodeRadius)
+    .attr('class', d => 'node-' + d.type);
+
+  nodeEl.append('text')
+    .attr('class', 'node-label')
+    .attr('dy', d => nodeRadius(d) + 11)
+    .attr('text-anchor', 'middle')
+    .text(d => d.label.length > 14 ? d.label.slice(0, 13) + '…' : d.label);
+
+  simulation.on('tick', () => {
+    linkEl
+      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+      .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+    nodeEl.attr('transform', d => `translate(${d.x},${d.y})`);
+  });
+
+  // Auto-fit: zoom to bounding box after simulation cools
+  simulation.on('end', () => {
+    const bounds = g.node().getBBox();
+    if (!bounds.width || !bounds.height) return;
+    const pad = 40;
+    const scaleX = (W - pad * 2) / bounds.width;
+    const scaleY = (H - pad * 2) / bounds.height;
+    const scale  = Math.min(scaleX, scaleY, 1.5);
+    const tx = (W - bounds.width  * scale) / 2 - bounds.x * scale;
+    const ty = (H - bounds.height * scale) / 2 - bounds.y * scale;
+    svg.transition().duration(600)
+      .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+  });
+
+  svg.on('click', () => clearSelection());
+}
+
+function showTooltip(event, d) {
+  const tt = document.getElementById('graph-tooltip');
+  let html = `<strong>${d.label}</strong><br>`;
+  if (d.type === 'module') html += `type: module · ${d.language}<br>PageRank: ${(d.pagerank||0).toFixed(4)}<br>LOC: ${d.loc}`;
+  else if (d.type === 'dataset') html += `type: dataset · ${d.storage || 'unknown'}`;
+  else html += `type: transform`;
+  if (d.purpose) html += `<br><em>${d.purpose.slice(0,70)}…</em>`;
+  tt.innerHTML = html;
+  tt.style.opacity = '1';
+  moveTooltip(event);
+}
+function moveTooltip(event) {
+  const tt = document.getElementById('graph-tooltip');
+  tt.style.left = (event.clientX + 12) + 'px';
+  tt.style.top  = (event.clientY - 10) + 'px';
+}
+function hideTooltip() { document.getElementById('graph-tooltip').style.opacity = '0'; }
+
+// ── Node / file selection ─────────────────────────────────────────────────────
+function selectNode(d) {
+  selectedNode = d;
+  // Highlight in graph
+  d3.selectAll('.node-g circle').classed('node-selected', n => n.id === d.id);
+  // Highlight in file nav
+  document.querySelectorAll('.file-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.path === d.id);
+  });
+  // Fetch and render risk
+  fetchRisk(d.id);
+  addChatMessage('bot', `Inspecting: **${d.label}**\nType: ${d.type} · ${d.language || ''}\n${d.purpose || ''}`);
+}
+
+function selectByPath(path) {
+  document.querySelectorAll('.file-item').forEach(el => el.classList.toggle('active', el.dataset.path === path));
+  d3.selectAll('.node-g circle').classed('node-selected', n => n.id === path);
+  const node = graphData.nodes.find(n => n.id === path);
+  if (node) { selectedNode = node; fetchRisk(path); }
+  else fetchRisk(path);
+}
+
+function clearSelection() {
+  d3.selectAll('.node-g circle').classed('node-selected', false);
+}
+
+// ── Risk panel ────────────────────────────────────────────────────────────────
+async function fetchRisk(nodeId) {
+  try {
+    const r = await fetch(`${API}/api/risk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ node_id: nodeId }),
+    }).then(r => r.json());
+    renderRisk(r);
+  } catch (e) {
+    console.error('risk fetch failed', e);
+  }
+}
+
+function renderRisk(r) {
+  if (!r || r.error) { console.warn('risk error', r); return; }
+  document.getElementById('m-blast').textContent = r.blast_score ?? '—';
+  document.getElementById('m-blast').className = 'metric-val ' +
+    (r.blast_score > 60 ? 'val-red' : r.blast_score > 30 ? 'val-amber' : 'val-green');
+  document.getElementById('m-pr').textContent  = r.pagerank;
+  document.getElementById('m-loc').textContent = r.loc;
+  document.getElementById('m-cx').textContent  = r.complexity;
+
+  const pct = Math.min(100, r.blast_score);
+  document.getElementById('blast-pct').textContent = pct + '/100';
+  const fill = document.getElementById('blast-fill');
+  fill.style.width = pct + '%';
+  fill.style.background = r.blast_score > 60 ? 'var(--red)' : r.blast_score > 30 ? 'var(--amber)' : 'var(--green)';
+
+  document.getElementById('detail-name').textContent = r.name + (r.type ? ' (' + r.type + ')' : '');
+  document.getElementById('detail-desc').textContent = r.purpose || 'No purpose statement.';
+  document.getElementById('detail-cost').textContent = r.change_cost;
+
+  const alerts = [];
+  if (r.drift)  alerts.push({ cls:'alert-red',   txt:'Doc drift detected — purpose statement may be outdated' });
+  if (r.dead)   alerts.push({ cls:'alert-amber',  txt:'Dead code candidate — no inbound imports' });
+  if (r.blast_score > 60) alerts.push({ cls:'alert-red',   txt:'High blast radius — change with care' });
+  else if (r.blast_score > 30) alerts.push({ cls:'alert-amber', txt:'Medium impact — check dependents before changing' });
+  else alerts.push({ cls:'alert-green', txt:'Low risk — minimal dependents' });
+  if (r.dep_datasets && r.dep_datasets.length) alerts.push({ cls:'alert-amber', txt:`Downstream datasets: ${r.dep_datasets.join(', ')}` });
+
+  const al = document.getElementById('alert-list');
+  al.innerHTML = alerts.map(a => `<div class="alert-item ${a.cls}"><div class="alert-dot"></div>${a.txt}</div>`).join('');
+}
+
+function renderDefaultRisk(summary) {
+  document.getElementById('m-blast').textContent = '—';
+  document.getElementById('m-pr').textContent  = summary.top_pagerank;
+  document.getElementById('m-loc').textContent = '—';
+  document.getElementById('m-cx').textContent  = '—';
+  const al = document.getElementById('alert-list');
+  const circ = summary.circular_deps > 0;
+  const drift = summary.doc_drift > 0;
+  al.innerHTML = `
+    ${circ ? `<div class="alert-item alert-red"><div class="alert-dot"></div>${summary.circular_deps} circular dependencies detected</div>` : '<div class="alert-item alert-green"><div class="alert-dot"></div>No circular dependencies</div>'}
+    ${drift ? `<div class="alert-item alert-amber"><div class="alert-dot"></div>${summary.doc_drift} doc drift flags</div>` : ''}
+    ${summary.dead_code > 0 ? `<div class="alert-item alert-amber"><div class="alert-dot"></div>${summary.dead_code} dead code candidates</div>` : '<div class="alert-item alert-green"><div class="alert-dot"></div>No dead code detected</div>'}
+  `;
+}
+
+function askAboutSelected() {
+  if (!selectedNode) { addChatMessage('bot', 'Select a node first.'); return; }
+  const q = `Explain module ${selectedNode.label} — purpose, blast radius, and change risk`;
+  document.getElementById('chat-in').value = q;
+  sendChat();
+}
+
+// ── Lineage ───────────────────────────────────────────────────────────────────
+
+const JUNK_NAMES = new Set(['the','final','renamed','staged','base','unioned',
+  'joined','filtered','pivoted','deduplicated','a','b','c','t','s','l','r']);
+function isRealNode(n) {
+  const id = (n.id || n.label || n).toLowerCase();
+  return id.length > 3 && !JUNK_NAMES.has(id);
+}
+function renderLineage(modules, graph) {
+  const lnFlow = document.getElementById('lineage-flow');
+  lnFlow.innerHTML = '';
+
+  // Only lineage-type edges (not module imports)
+  const lineageEdgeTypes = new Set(['consumes','produces','lineage']);
+  const lineageEdges = graph.edges.filter(e => lineageEdgeTypes.has(e.type));
+
+  // Build id→node index
+  const nodeById = new Map(graph.nodes.map(n => [n.id, n]));
+
+  // Collect dataset+transform nodes that appear in lineage edges
+  const edgeNodeIds = new Set();
+  lineageEdges.forEach(e => {
+    edgeNodeIds.add(typeof e.source === 'string' ? e.source : e.source.id);
+    edgeNodeIds.add(typeof e.target === 'string' ? e.target : e.target.id);
+  });
+
+  const candidates = graph.nodes.filter(n =>
+    (n.type === 'dataset' || n.type === 'transform') &&
+    isRealNode(n) &&
+    edgeNodeIds.has(n.id)
+  );
+
+  if (!candidates.length) {
+    // Fallback: just show all dataset/transform nodes alphabetically
+    const fallback = graph.nodes.filter(n => (n.type === 'dataset' || n.type === 'transform') && isRealNode(n));
+    if (!fallback.length) { lnFlow.innerHTML = '<div class="loading">No lineage data</div>'; return; }
+    _renderLineageNodes(lnFlow, fallback.slice(0,8));
+    return;
+  }
+
+  // Kahn's topological sort on lineage subgraph
+  const inDegree = new Map(candidates.map(n => [n.id, 0]));
+  const adjOut   = new Map(candidates.map(n => [n.id, []]));
+
+  lineageEdges.forEach(e => {
+    const s = typeof e.source === 'string' ? e.source : e.source.id;
+    const t = typeof e.target === 'string' ? e.target : e.target.id;
+    if (inDegree.has(s) && inDegree.has(t)) {
+      adjOut.get(s).push(t);
+      inDegree.set(t, (inDegree.get(t) || 0) + 1);
+    }
+  });
+
+  const queue = candidates.filter(n => inDegree.get(n.id) === 0);
+  const sorted = [];
+  const visited = new Set();
+  while (queue.length) {
+    const node = queue.shift();
+    if (visited.has(node.id)) continue;
+    visited.add(node.id);
+    sorted.push(node);
+    (adjOut.get(node.id) || []).forEach(tid => {
+      const deg = (inDegree.get(tid) || 1) - 1;
+      inDegree.set(tid, deg);
+      if (deg === 0 && !visited.has(tid)) {
+        const tn = nodeById.get(tid);
+        if (tn) queue.push(tn);
+      }
+    });
+  }
+  // Append any unvisited (disconnected) nodes
+  candidates.forEach(n => { if (!visited.has(n.id)) sorted.push(n); });
+
+  _renderLineageNodes(lnFlow, sorted.slice(0, 9));
+}
+
+function _renderLineageNodes(lnFlow, nodes) {
+  nodes.forEach((n, i) => {
+    const el = document.createElement('div');
+    el.className = 'ln-node' + (i === 0 ? ' active' : '');
+    el.dataset.id = n.id;
+    const sub = n.storage || (n.type === 'transform' ? 'transform' : 'dataset');
+    const label = n.label.length > 14 ? n.label.slice(0,13)+'…' : n.label;
+    el.innerHTML = `<div class="ln-node-title">${label}</div><div class="ln-node-sub">${sub}</div>`;
+    el.onclick = () => lnClick(el, n);
+    lnFlow.appendChild(el);
+    if (i < nodes.length - 1) {
+      const arr = document.createElement('div');
+      arr.className = 'ln-arrow';
+      arr.textContent = '→';
+      lnFlow.appendChild(arr);
+    }
+  });
+  const first = lnFlow.querySelector('.ln-node');
+  const firstNode = nodes[0];
+  if (first && firstNode) lnClick(first, firstNode);
+}
+
+async function lnClick(el, node) {
+  document.querySelectorAll('.ln-node').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  const id = node.id || node;
+  try {
+    const r = await fetch(`${API}/api/lineage/${encodeURIComponent(id)}`).then(r => r.json());
+    let detail = `${id} — `;
+    if (r.found) {
+      detail += `${r.nodes.length} related nodes · ${r.edges.length} edges`;
+      const enriched = (r.enriched_nodes || []).find(n => n.column_mappings && Object.keys(n.column_mappings).length);
+      if (enriched) {
+        const cols = Object.entries(enriched.column_mappings).slice(0,3).map(([k,v]) => `${v[0]}→${k}`).join(', ');
+        detail += ` · columns: ${cols}`;
+      }
+    } else {
+      detail += 'not in lineage graph';
+    }
+    document.getElementById('ln-detail').textContent = detail;
+  } catch {
+    document.getElementById('ln-detail').textContent = id;
+  }
+}
+
+// ── Chat + Navigator ──────────────────────────────────────────────────────────
+function renderChips(modules) {
+  const top = modules.slice(0, 3).map(m => m.name);
+  const chips = [
+    `blast radius of ${top[0] || 'orders.sql'}`,
+    `trace ${(modules.find(m => m.language === 'sql') || modules[0] || {name:'customers'}).name} upstream`,
+    'which modules have doc drift?',
+    'where is business logic concentrated?',
+  ];
+  const row = document.getElementById('chips');
+  row.innerHTML = chips.map(c => `<div class="chip" onclick="sendQ('${c}')">${c}</div>`).join('');
+}
+
+function addChatMessage(role, text) {
+  const msgs = document.getElementById('chat-msgs');
+  const el = document.createElement('div');
+  el.className = 'msg msg-' + role;
+  el.textContent = text.replace(/\*\*/g, '');
+  msgs.appendChild(el);
+  msgs.scrollTop = msgs.scrollHeight;
+  return el;
+}
+
+async function sendChat() {
+  const inp = document.getElementById('chat-in');
+  const q = inp.value.trim();
+  if (!q) return;
+  inp.value = '';
+
+  addChatMessage('user', q);
+  const botEl = addChatMessage('bot', '…');
+  botEl.classList.add('msg-thinking');
+
+  try {
+    const res = await fetch(`${API}/api/query`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let full = '';
+    let started = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const msg = JSON.parse(line.slice(6));
+          if (msg.type === 'thinking') {
+            botEl.textContent = 'Thinking…';
+          } else if (msg.type === 'token') {
+            if (!started) { botEl.textContent = ''; botEl.classList.remove('msg-thinking'); started = true; }
+            botEl.textContent += msg.text;
+            document.getElementById('chat-msgs').scrollTop = 9999;
+            full += msg.text;
+          } else if (msg.type === 'done') {
+            botEl.textContent = msg.full || full;
+            botEl.classList.remove('msg-thinking');
+          } else if (msg.type === 'error') {
+            botEl.textContent = 'Error: ' + msg.text;
+            botEl.classList.remove('msg-thinking');
+          }
+        } catch {}
+      }
+    }
+  } catch (e) {
+    botEl.textContent = 'Network error: ' + e.message + '. Is the server running?';
+    botEl.classList.remove('msg-thinking');
+  }
+}
+
+function sendQ(q) {
+  document.getElementById('chat-in').value = q;
+  sendChat();
+}
+
+// ── Enter key ─────────────────────────────────────────────────────────────────
+document.getElementById('chat-in').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+});
+
+// ── Handle graph resize ───────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  if (graphData.nodes.length) renderGraph(graphData);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+init().catch(e => {
+  document.getElementById('chat-msgs').innerHTML =
+    `<div class="msg msg-bot">Failed to connect to API server: ${e.message}<br>Make sure the server is running on the same port.</div>`;
+});
+</script>
+</body>
+</html>
