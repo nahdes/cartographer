@@ -25,6 +25,7 @@ FROM_RE   = re.compile(r"\bFROM\s+([`\"'\[]?[\w.]+[`\"'\]]?)",   re.IGNORECASE)
 JOIN_RE   = re.compile(r"\bJOIN\s+([`\"'\[]?[\w.]+[`\"'\]]?)",   re.IGNORECASE)
 INTO_RE   = re.compile(r"\bINTO\s+([`\"'\[]?[\w.]+[`\"'\]]?)",   re.IGNORECASE)
 CTE_RE    = re.compile(r"\bWITH\s+(\w+)\s+AS\s*\(",              re.IGNORECASE)
+MULTI_CTE_RE = re.compile(r",\s*(\w+)\s+AS\s*\(",                   re.IGNORECASE)
 CREATE_RE = re.compile(
     r"\bCREATE\s+(?:OR\s+REPLACE\s+)?(?:TABLE|VIEW)\s+"
     r"(?:IF\s+NOT\s+EXISTS\s+)?([`\"'\[]?[\w.]+[`\"'\]]?)",      re.IGNORECASE)
@@ -38,6 +39,26 @@ SQL_KEYWORDS = {
     "ifnull","isnull","cast","convert","date","timestamp","true","false",
 }
 
+
+
+# Single-word SQL fragments that can leak as fake table names after Jinja strip
+_JUNK_SOURCES = {
+    "placeholder_tbl", "the", "final", "renamed", "staged", "base",
+    "unioned", "joined", "filtered", "pivoted", "deduplicated",
+    "a", "b", "c", "t", "s", "l", "r",
+}
+
+def _is_real_source(name: str) -> bool:
+    """Return True if this looks like a real table/dataset name, not a CTE fragment."""
+    n = name.lower().strip()
+    if n in _JUNK_SOURCES:
+        return False
+    if len(n) <= 2:
+        return False
+    # pure SQL keyword
+    if n in SQL_KEYWORDS:
+        return False
+    return True
 
 def _strip(raw: str) -> str:
     return raw.strip("`\"'[] \t\n").lower()
@@ -191,12 +212,13 @@ class SQLLineageAnalyzer:
                target_name: str) -> List[TransformationNode]:
         clean = _clean(sql)
         ctes: Set[str]    = {m.group(1).lower() for m in CTE_RE.finditer(clean)}
+        ctes |= {m.group(1).lower() for m in MULTI_CTE_RE.finditer(clean)}
         sources: Set[str] = set()
         targets: Set[str] = set()
         for pat in (FROM_RE, JOIN_RE):
             for m in pat.finditer(clean):
                 t = _strip(m.group(1))
-                if t and t not in ctes and len(t) > 1:
+                if t and t not in ctes and _is_real_source(t):
                     sources.add(t)
         for pat in (INTO_RE, INSERT_RE, CREATE_RE):
             for m in pat.finditer(clean):
@@ -235,11 +257,25 @@ class SQLLineageAnalyzer:
         clean_sql = re.sub(r"\{\{[^}]+\}\}", "placeholder_tbl", raw)
         clean_sql = re.sub(r"\{%[^%]+%\}", "", clean_sql)
         target = Path(path).stem.lower()
+        # Extract ALL CTE names from cleaned SQL — these are never real source tables
+        all_ctes: Set[str] = {m.group(1).lower() for m in CTE_RE.finditer(clean_sql)}
+        all_ctes |= {m.group(1).lower() for m in MULTI_CTE_RE.finditer(clean_sql)}
+        all_ctes.add("placeholder_tbl")
         transforms = self.extract_lineage(clean_sql, path, target_name=target)
-        all_sources: Set[str] = set(dbt_sources)
+        # Only trust dbt ref()/source() — they are the real dependencies
+        # Supplement with regex finds but strip CTEs and junk
+        regex_sources: Set[str] = set()
         for t in transforms:
-            all_sources.update(t.source_datasets)
+            regex_sources.update(t.source_datasets)
+        regex_sources -= all_ctes
+        regex_sources = {s for s in regex_sources if _is_real_source(s)}
+        # dbt ref() sources are authoritative; use regex as fallback only if no refs found
+        all_sources: Set[str] = set(dbt_sources) if dbt_sources else regex_sources
+        if dbt_sources:
+            # Still add regex sources that look like real table refs (not CTEs)
+            all_sources |= {s for s in regex_sources if s not in all_ctes and "_" in s}
         all_sources.discard(target)
+        all_sources -= all_ctes
         col_maps = extract_column_mappings(clean_sql)
         return [TransformationNode(
             name=f"dbt_model_{target}",
